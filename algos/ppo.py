@@ -64,11 +64,7 @@ class HistoryCallback(BaseCallback): # custom callback for hist plot
     return True
 
 def make_env(task, seed=None):
-  def _init():
-    env = GymEnv(task, seed=seed).env
-    env.__enter__()
-    return env
-  return _init
+  return lambda: GymEnv(task, seed=seed).env
 
 def load_model(task, ppo_model): # TODO: simplify extract ppo best model -> MLP policy
   env = GymEnv(task)
