@@ -1,11 +1,13 @@
 import os
+import wandb
 import torch
 import pickle
 import argparse
 import importlib
 import numpy as np
-import gymnasium as gym
 import matplotlib.pyplot as plt
+import gymnasium as gym
+from gymnasium.wrappers import RecordVideo
 from pathlib import Path
 
 class GymEnv:
@@ -15,6 +17,8 @@ class GymEnv:
     else:
       module = importlib.import_module(f'tasks.{task}')
       self.env = module.CustomEnv(render_mode=render_mode)
+    if render_mode == "rgb_array": # save video
+      self.env = RecordVideo(self.env, video_folder="out/", episode_trigger=lambda e: True)
 
     self.is_act_discrete = True if isinstance(self.env.action_space, gym.spaces.Discrete) else False
     self.n_obs = self.env.observation_space.shape[-1]
@@ -63,15 +67,20 @@ def train(task, algo, hidden_sizes=[32], max_evals=1000, save_model=False, seed=
 
   if save_model:
     os.makedirs('out', exist_ok=True)
-    file_name = f"out/{task}_{algo}_nevs{max_evals}"
-    print(f"saving to {file_name}")
-    torch.save(best_model, file_name + '.pt')
-    with open(file_name + '_hist.pkl', 'wb') as f:
+    filename = f"out/{task}_{algo}_nevs{max_evals}"
+    print(f"saving to {filename}")
+    torch.save(best_model, filename + '.pt')
+    with open(filename + '_hist.pkl', 'wb') as f:
       pickle.dump(hist, f)
-
+    # wandb
+    wandb.init(project="tinygym_training", name=f"{task}_{algo}")
+    wandb.config.update({ "task": task, "algo": algo, "hidden_sizes": hidden_sizes, "max_evals": max_evals, "seed": seed })
+    for step, reward in hist:
+      wandb.log({"reward": reward}, step=step)
+    wandb.save(filename + '.pt')
   return best_model, hist
 
-def sample(task, best_model, n_samples=10, render_mode=None, seed=None):
+def sample(task, model, n_samples=10, render_mode=None, seed=None):
   env = GymEnv(task, render_mode=render_mode, seed=seed)
   rewards, infos = [], []
   for i in range(n_samples):
@@ -80,12 +89,15 @@ def sample(task, best_model, n_samples=10, render_mode=None, seed=None):
     infos.append(eps_info)
   return rewards, infos
 
-def plot_traj(info):
+def plot_traj(info, filename, save_plot=False):
   plt.plot(info[0]["x"], label='actual pos')
   plt.plot(info[0]["x_target"], label='target pos')
   plt.title("actual vs target trajectory")
   plt.ylim([-2.2,2.2])
   plt.legend(loc="upper left")
+  if save_plot:
+    plt.savefig(f'out/{filename}_traj.png')
+    wandb.log({"traj plot": plt})
   plt.show()
 
 if __name__ == "__main__":
@@ -96,15 +108,20 @@ if __name__ == "__main__":
   parser.add_argument("--n_samples", type=int, default=1)
   parser.add_argument("--save_model", default=False)
   parser.add_argument("--noise_mode", default=None)
-  parser.add_argument("--render_mode", type=str, default="human", choices=["human", "None"])
+  parser.add_argument("--render_mode", type=str, default="human", choices=["human", "rgb_array", "None"])
   parser.add_argument("--hidden_sizes", type=str, default="32")
   parser.add_argument("--seed", type=int, default=42)
   args = parser.parse_args()
 
   hidden_sizes = get_hidden_sizes(args.hidden_sizes)
   best_model, hist = train(args.task, args.algo, hidden_sizes, args.max_evals, args.save_model, seed=args.seed)
-  rewards, info = sample(args.task, best_model, args.n_samples, args.render_mode)
-  print(f"rewards {rewards} avg {np.mean(rewards)}")
+  if args.save_model:
+    rewards, info = sample(args.task, best_model, args.n_samples, render_mode="rgb_array")
+    wandb.log({"video": wandb.Video(f'out/rl-video-episode-0.mp4', fps=50, format="mp4")})
+  else:
+    rewards, info = sample(args.task, best_model, args.n_samples, args.render_mode)
+  print(f"sample run rewards {rewards} avg {np.mean(rewards)}")
 
   if args.task == "CartLatAccel":
-    plot_traj(info)
+    filename = f"{args.task}_{args.algo}_nevs{args.max_evals}"
+    plot_traj(info, filename, save_plot=args.save_model)
