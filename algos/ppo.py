@@ -92,6 +92,6 @@ def train(task, hidden_sizes, max_evals=1000, n_envs=32, seed=None):
   global start
   start = time.time()
   ppo_model.learn(total_timesteps=np.inf, callback=[callback, stop_callback])
-  ppo_model.save("out/ppo_model")
+  # ppo_model.save("out/ppo_model")
   best_model = load_model(task, ppo_model)
   return best_model, callback.history
