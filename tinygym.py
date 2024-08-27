@@ -13,6 +13,7 @@ from pathlib import Path
 
 class GymEnv:
   def __init__(self, task, render_mode=None, seed=None):
+    self.task = task
     self.env = gym.make(task, render_mode=render_mode)
     if render_mode == "rgb_array": # save video
       self.env = RecordVideo(self.env, video_folder="out/", episode_trigger=lambda e: True)
@@ -60,8 +61,9 @@ def get_hidden_sizes(hidden_sizes):
   return list(map(int, hidden_sizes.split(',')))
 
 def train(task, algo, hidden_sizes=[32], max_evals=1000, save=False, seed=None):
-  module = importlib.import_module(f'algos.{algo}')
-  best_model, hist = module.train(task, hidden_sizes=hidden_sizes, max_evals=max_evals, seed=seed)
+  env = GymEnv(task, seed=seed)
+  algo_class = getattr(importlib.import_module(f'algos.{algo}'), algo)()
+  best_model, hist = algo_class.train(env, hidden_sizes, max_evals)
 
   if save:
     os.makedirs('out', exist_ok=True)

@@ -3,57 +3,57 @@ import torch
 import numpy as np
 import torch.nn as nn
 import torch.optim as optim
-from torchrl.data import ReplayBuffer, LazyTensorStorage
 from tensordict import TensorDict
+from torchrl.data import ReplayBuffer, LazyTensorStorage
+from algos import RLAlgorithm
 from tinygym import GymEnv
 from model import ActorCritic
 
-class PPO:
-  def __init__(self, env, model, lr=1e-3, gamma=0.99, lam=0.95, clip_range=0.2, epochs=1, n_steps=1000, ent_coeff=0.01, bs=32, device='cpu', debug=False):
-    self.env = env
-    self.model = model.to(device)
-    self.gamma = gamma
-    self.lam = lam
+class PPO(RLAlgorithm):
+  def __init__(self, lr=1e-3, clip_range=0.2, epochs=1, n_steps=1000, ent_coeff=0.01, bs=32, device='cpu', debug=False):
+    self.lr = lr
     self.clip_range = clip_range
     self.epochs = epochs
     self.n_steps = n_steps
     self.ent_coeff = ent_coeff
-    self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
-    # self.scheduler = optim.lr_scheduler.LinearLR(self.optimizer, start_factor=1.0, end_factor=0.5, total_iters=50)
-    self.replay_buffer = ReplayBuffer(storage=LazyTensorStorage(max_size=10000, device=device), batch_size=bs)
     self.bs = bs
+    self.replay_buffer = ReplayBuffer(storage=LazyTensorStorage(max_size=10000, device=device), batch_size=bs)
     self.hist = []
     self.start = time.time()
     self.device = device
     self.debug = debug
     self.eps = 0
 
-  def compute_gae(self, rewards, values, done, next_value):
+  @staticmethod
+  def compute_gae(rewards, values, done, next_value, gamma=0.99, lam=0.95):
     returns, advantages = np.zeros_like(rewards), np.zeros_like(rewards)
     gae = 0
     for t in reversed(range(len(rewards))):
-      delta = rewards[t] + self.gamma*next_value*(1-done[t]) - values[t]
-      gae = delta + self.gamma*self.lam*(1-done[t])*gae
+      delta = rewards[t] + gamma*next_value*(1-done[t]) - values[t]
+      gae = delta + gamma*lam*(1-done[t])*gae
       advantages[t] = gae
       returns[t] = gae + values[t]
       next_value = values[t]
     return returns, advantages
 
-  def evaluate_cost(self, states, actions, returns, advantages, logprob):
-    new_logprob, entropy = self.model.actor.get_logprob(states, actions)
+  def evaluate_cost(self, model, states, actions, returns, advantages, logprob):
+    new_logprob, entropy = model.actor.get_logprob(states, actions)
     ratio = torch.exp(new_logprob-logprob).squeeze()
     surr1 = ratio * advantages
     surr2 = torch.clamp(ratio, 1-self.clip_range, 1+self.clip_range) * advantages
     actor_loss = -torch.min(surr1, surr2).mean()
-    critic_loss = nn.MSELoss()(self.model.critic(states).squeeze(), returns)
+    critic_loss = nn.MSELoss()(model.critic(states).squeeze(), returns)
     entropy_loss = -self.ent_coeff * entropy.mean()
     return {"actor": actor_loss, "critic": critic_loss, "entropy": entropy_loss}
 
-  def train(self, max_evals=1000):
+  def train(self, env, hidden_sizes, max_evals=10000):
+    model = ActorCritic(env.n_obs, {"pi": hidden_sizes, "vf": [32]}, env.n_act, env.is_act_discrete).to(self.device)
+    optimizer = optim.Adam(model.parameters(), lr=self.lr)
+
     while True:
       # rollout
       start = time.perf_counter()
-      states, actions, rewards, dones, _, next_state = self.env.rollout(self.model.actor)
+      states, actions, rewards, dones, _, next_state = env.rollout(model.actor)
       rollout_time = time.perf_counter()-start
 
       # compute gae
@@ -61,10 +61,10 @@ class PPO:
       with torch.no_grad():
         state_tensor = torch.FloatTensor(np.array(states)).to(self.device)
         next_state_tensor = torch.FloatTensor(next_state).to(self.device)
-        action_tensor = torch.LongTensor(np.array(actions)).to(self.device) if self.env.is_act_discrete else torch.FloatTensor(np.array(actions)).to(self.device)
-        values = self.model.critic(state_tensor).cpu().numpy().squeeze()
-        next_values = self.model.critic(next_state_tensor).cpu().numpy().squeeze()
-        logprobs_tensor, _ = self.model.actor.get_logprob(state_tensor, action_tensor)
+        action_tensor = torch.LongTensor(np.array(actions)).to(self.device) if env.is_act_discrete else torch.FloatTensor(np.array(actions)).to(self.device)
+        values = model.critic(state_tensor).cpu().numpy().squeeze()
+        next_values = model.critic(next_state_tensor).cpu().numpy().squeeze()
+        logprobs_tensor, _ = model.actor.get_logprob(state_tensor, action_tensor)
 
       returns, advantages = self.compute_gae(np.array(rewards), values, np.array(dones), next_values)
       gae_time = time.perf_counter()-start
@@ -90,17 +90,15 @@ class PPO:
         for _ in range(self.epochs):
           for i, batch in enumerate(self.replay_buffer):
             advantages = (batch['advantages']-torch.mean(batch['advantages']))/(torch.std(batch['advantages'])+1e-8)
-            costs = self.evaluate_cost(batch['states'], batch['actions'], batch['returns'], advantages, batch['logprobs'])
+            costs = self.evaluate_cost(model, batch['states'], batch['actions'], batch['returns'], advantages, batch['logprobs'])
             loss = costs["actor"] + 0.5 * costs["critic"] + costs["entropy"]
-            self.optimizer.zero_grad()
+            optimizer.zero_grad()
             loss.backward()
-            self.optimizer.step()
+            optimizer.step()
 
             if i == self.n_steps // self.bs:
               break
         self.replay_buffer.empty() # clear buffer
-        # self.scheduler.step() # lr decay
-        # print(self.scheduler.get_last_lr())
         update_time = time.perf_counter() - start
 
         if self.debug:
@@ -113,11 +111,4 @@ class PPO:
       self.eps += 1 # cartlataccel env bs
       if self.eps > max_evals:
         break
-    return self.model.actor.cpu(), self.hist
-
-def train(task, hidden_sizes, max_evals=10000, seed=None):
-  print(f"training ppo with hidden_sizes {hidden_sizes} max_evals {max_evals}")
-  env = GymEnv(task, seed=seed)
-  model = ActorCritic(env.n_obs, {"pi": hidden_sizes, "vf": [32]}, env.n_act, env.is_act_discrete)
-  ppo = PPO(env, model)
-  return ppo.train(max_evals=max_evals)
+    return model.actor.cpu(), self.hist
