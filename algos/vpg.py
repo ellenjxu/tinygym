@@ -20,7 +20,7 @@ def train_single_epoch(model, env, n_steps=1000):
   obs, acts, rews, rets, step_count, n_eps = [], [], [], [], 0, 0 # batch
 
   while True:
-    ep_obs, ep_acts, ep_rews, _ = env.rollout(model)  # over multiple rollouts
+    ep_obs, ep_acts, ep_rews, *_ = env.rollout(model)  # over multiple rollouts
     obs.extend(ep_obs)
     acts.extend(ep_acts)
     rews.append(sum(ep_rews))

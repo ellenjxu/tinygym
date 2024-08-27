@@ -25,7 +25,7 @@ def train(task, hidden_sizes=[32], max_evals=1000, seed=None):  # episodic, bs=1
   hist = []
   for i in range(max_evals):
     optimizer.zero_grad()
-    ep_obs, ep_acts, ep_rew, _ = env.rollout(model)
+    ep_obs, ep_acts, ep_rew, *_ = env.rollout(model)
     loss = evaluate_cost(model, torch.tensor(np.array(ep_obs)), torch.tensor(np.array(ep_acts)), torch.tensor(np.array(ep_rew)))
     loss.backward()
     optimizer.step()

@@ -16,7 +16,6 @@ class GymEnv:
     self.env = gym.make(task, render_mode=render_mode)
     if render_mode == "rgb_array": # save video
       self.env = RecordVideo(self.env, video_folder="out/", episode_trigger=lambda e: True)
-
     self.is_act_discrete = True if isinstance(self.env.action_space, gym.spaces.Discrete) else False
     self.n_obs = self.env.observation_space.shape[-1]
     self.n_act = self.env.action_space.n if self.is_act_discrete else self.env.action_space.shape[-1]
@@ -30,27 +29,28 @@ class GymEnv:
     torch.manual_seed(seed)
 
   def rollout(self, model, max_steps=1000, deterministic=False, seed=None):
-    states, actions, rewards  = [], [], []
+    states, actions, rewards, dones = [], [], [], []
     state, _ = self.env.reset(seed=seed)
     infos = {}
 
-    with self.env:
-      for _ in range(max_steps):
-        state_tensor = torch.FloatTensor(state).unsqueeze(0)
-        action = model.get_action(state_tensor, deterministic=deterministic).detach().cpu().numpy()
-        next_state, reward, terminated, truncated, info = self.env.step(action)
-        states.append(state)
-        actions.append(action)
-        rewards.append(reward)
+    for _ in range(max_steps):
+      state_tensor = torch.FloatTensor(state).unsqueeze(0)
+      action = model.get_action(state_tensor, deterministic=deterministic).detach().cpu().numpy()
+      next_state, reward, terminated, truncated, info = self.env.step(action)
+      states.append(state)
+      actions.append(action)
+      rewards.append(reward)
+      done = terminated or truncated
+      dones.append(done)
 
-        for k,v in info.items():
-          if k not in infos: infos[k] = []
-          infos[k].append(v)
+      for k,v in info.items():
+        if k not in infos: infos[k] = []
+        infos[k].append(v)
 
-        state = next_state
-        if terminated or truncated:
-          break
-      return states, actions, rewards, infos
+      state = next_state
+      if done:
+        break
+    return states, actions, rewards, dones, infos, next_state
 
 def get_available_algos():
   return [f.stem for f in Path('algos').iterdir() if f.is_file() and f.suffix == '.py' and f.stem != '__init__']
@@ -82,7 +82,7 @@ def sample(task, model, n_samples=10, render_mode=None, seed=None):
   env = GymEnv(task, render_mode=render_mode, seed=seed)
   rewards, infos = [], []
   for i in range(n_samples):
-    eps_states, eps_actions, eps_rewards, eps_info = env.rollout(model, deterministic=True, seed=seed)
+    eps_states, eps_actions, eps_rewards, eps_info, *_ = env.rollout(model, deterministic=True, seed=seed)
     rewards.append(sum(eps_rewards))
     infos.append(eps_info)
   return rewards, infos
@@ -105,7 +105,6 @@ if __name__ == "__main__":
   parser.add_argument("--max_evals", type=int, default=1000)
   parser.add_argument("--n_samples", type=int, default=1)
   parser.add_argument("--save_model", default=False)
-  parser.add_argument("--noise_mode", default=None)
   parser.add_argument("--render_mode", type=str, default="human", choices=["human", "rgb_array", "None"])
   parser.add_argument("--hidden_sizes", type=str, default="32")
   parser.add_argument("--seed", type=int, default=42)

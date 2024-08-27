@@ -26,7 +26,7 @@ def evaluate_fitness(model, task, sample_size, params, seed=None):
   update_params(model.mlp, params)
   costs = []
   for i in range(sample_size):
-    _, _, rewards, _ = env.rollout(model)
+    _, _, rewards, *_ = env.rollout(model)
   cost = -sum(rewards)
   costs.append(cost)
   return np.mean(costs)

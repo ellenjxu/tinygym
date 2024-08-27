@@ -49,31 +49,11 @@ class PPO:
     entropy_loss = -self.ent_coeff * entropy.mean()
     return {"actor": actor_loss, "critic": critic_loss, "entropy": entropy_loss}
 
-  def rollout(self, max_steps=1000, deterministic=False): # TODO: gymenv
-    states, actions, rewards, dones  = [], [], [], []
-    state, _ = self.env.reset()
-
-    for _ in range(max_steps):
-      state_tensor = torch.FloatTensor(state).to(self.device).unsqueeze(0)
-      action = self.model.actor.get_action(state_tensor, deterministic=deterministic).detach().cpu().numpy()
-      next_state, reward, terminated, truncated, info = self.env.step(action)
-      states.append(state)
-      actions.append(action)
-      rewards.append(reward)
-      done = terminated or truncated
-      dones.append(done)
-
-      state = next_state
-      if done:
-        break
-        # state, _ = self.env.reset()
-    return states, actions, rewards, dones, next_state
-
   def train(self, max_evals=1000):
     while True:
       # rollout
       start = time.perf_counter()
-      states, actions, rewards, dones, next_state = self.rollout()
+      states, actions, rewards, dones, _, next_state = self.env.rollout(self.model.actor)
       rollout_time = time.perf_counter()-start
 
       # compute gae
@@ -81,7 +61,7 @@ class PPO:
       with torch.no_grad():
         state_tensor = torch.FloatTensor(np.array(states)).to(self.device)
         next_state_tensor = torch.FloatTensor(next_state).to(self.device)
-        action_tensor = torch.LongTensor(np.array(actions)).to(self.device) if self.model.discrete else torch.FloatTensor(np.array(actions)).to(self.device)
+        action_tensor = torch.LongTensor(np.array(actions)).to(self.device) if self.env.is_act_discrete else torch.FloatTensor(np.array(actions)).to(self.device)
         values = self.model.critic(state_tensor).cpu().numpy().squeeze()
         next_values = self.model.critic(next_state_tensor).cpu().numpy().squeeze()
         logprobs_tensor, _ = self.model.actor.get_logprob(state_tensor, action_tensor)
@@ -123,25 +103,21 @@ class PPO:
         # print(self.scheduler.get_last_lr())
         update_time = time.perf_counter() - start
 
-        # debug info
         if self.debug:
           print(f"critic loss {costs['critic'].item():.3f} entropy {costs['entropy'].item():.3f} mean action {np.mean(abs(np.array(actions)))}")
           print(f"Runtimes: rollout {rollout_time:.3f}, gae {gae_time:.3f}, buffer {buffer_time:.3f}, update {update_time:.3f}")
-
         avg_reward = np.sum(rewards)
         self.hist.append((self.eps, avg_reward))
         print(f"eps {self.eps:.2f}, reward {avg_reward:.3f}, t {time.time()-self.start:.2f}")
 
-      if self.eps > max_evals:
-        print(f"Total time: {time.time() - self.start}")
-        break
-
       self.eps += 1 # cartlataccel env bs
+      if self.eps > max_evals:
+        break
     return self.model.actor.cpu(), self.hist
 
 def train(task, hidden_sizes, max_evals=10000, seed=None):
   print(f"training ppo with hidden_sizes {hidden_sizes} max_evals {max_evals}")
   env = GymEnv(task, seed=seed)
   model = ActorCritic(env.n_obs, {"pi": hidden_sizes, "vf": [32]}, env.n_act, env.is_act_discrete)
-  ppo = PPO(env.env, model)
+  ppo = PPO(env, model)
   return ppo.train(max_evals=max_evals)

@@ -74,7 +74,6 @@ class MLPCritic(nn.Module):
 class ActorCritic(nn.Module):
   def __init__(self, obs_dim: int, hidden_sizes: dict[str, list[int]], act_dim: int, discrete: bool = False) -> None:
     super(ActorCritic, self).__init__()
-    self.discrete = discrete
     model_class = MLPCategorical if discrete else MLPGaussian
     self.actor = model_class(obs_dim, hidden_sizes["pi"], act_dim)
     self.critic = MLPCritic(obs_dim, hidden_sizes["vf"])

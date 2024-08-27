@@ -1,6 +1,6 @@
 # rl-playground
 
-simple environment for training RL algos on custom tasks
+simple environment for training RL algos on custom envs
 
 `python tinygym.py --algo ppo --task CartLatAccel --max_evals 1000 --save_model True`
 
@@ -8,3 +8,7 @@ simple environment for training RL algos on custom tasks
 - [x] vpg
 - [x] cma
 - [ ] ppo
+
+TODO:
+
+- [ ] report: test that it passes tasks
