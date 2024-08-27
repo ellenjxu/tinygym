@@ -1,4 +1,5 @@
 import os
+import envs
 import wandb
 import torch
 import pickle
@@ -12,11 +13,7 @@ from pathlib import Path
 
 class GymEnv:
   def __init__(self, task, render_mode=None, seed=None):
-    if task in gym.envs.registry.keys():
-      self.env = gym.make(task, render_mode=render_mode)
-    else:
-      module = importlib.import_module(f'tasks.{task}')
-      self.env = module.CustomEnv(render_mode=render_mode)
+    self.env = gym.make(task, render_mode=render_mode)
     if render_mode == "rgb_array": # save video
       self.env = RecordVideo(self.env, video_folder="out/", episode_trigger=lambda e: True)
 
