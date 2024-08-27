@@ -13,7 +13,7 @@ def get_discounted_(rewards, gamma=0.99):
   return torch.tensor(returns)
 
 def evaluate_cost(model, obs, act, rewards):
-  logp = model.get_logprob(obs, act)
+  logp, _ = model.get_logprob(obs, act)
   rets = get_discounted_(rewards) # calculate returns after each rollout
   return -(logp * rets).mean() # pseudoloss
 

@@ -13,7 +13,7 @@ def get_discounted_(rewards, gamma=0.99):
   return torch.tensor(returns)
 
 def evaluate_cost(model, obs, act, rets):
-  logp = model.get_logprob(obs, act)
+  logp, _ = model.get_logprob(obs, act)
   return -(logp * rets).mean()
 
 def train_single_epoch(model, env, n_steps=1000):
