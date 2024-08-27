@@ -1,6 +1,6 @@
 # rl-playground
 
-simple RL playground for training algos on custom tasks
+a tiny RL playground for training algos on custom tasks 🤖
 
 ## Usage
 
@@ -13,7 +13,7 @@ To check algos on sample tasks: `python unit_test.py`
 
 ## Implementations
 
-Includes custom basic, minimal implements of RL algos. converges to basic controls tasks in <1K episodes (CMA takes longer, ~10K).
+Includes minimal implements of RL algos.
 
 - [x] reinforce (~35 lines of code)
 - [x] vpg (~50 lines)
@@ -21,3 +21,5 @@ Includes custom basic, minimal implements of RL algos. converges to basic contro
 - [x] ppo (based on SB3)
 - [ ] dqn
 - [ ] sac
+
+converges to basic controls tasks in <1K episodes (CMA takes longer, ~10K).
