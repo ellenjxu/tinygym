@@ -59,11 +59,11 @@ def get_hidden_sizes(hidden_sizes):
   if hidden_sizes=="None": return []
   return list(map(int, hidden_sizes.split(',')))
 
-def train(task, algo, hidden_sizes=[32], max_evals=1000, save_model=False, seed=None):
+def train(task, algo, hidden_sizes=[32], max_evals=1000, save=False, seed=None):
   module = importlib.import_module(f'algos.{algo}')
   best_model, hist = module.train(task, hidden_sizes=hidden_sizes, max_evals=max_evals, seed=seed)
 
-  if save_model:
+  if save:
     os.makedirs('out', exist_ok=True)
     filename = f"out/{task}_{algo}_nevs{max_evals}"
     print(f"saving to {filename}")
@@ -87,38 +87,23 @@ def sample(task, model, n_samples=10, render_mode=None, seed=None):
     infos.append(eps_info)
   return rewards, infos
 
-def plot_traj(info, filename, save_plot=False):
-  plt.plot(info[0]["x"], label='actual pos')
-  plt.plot(info[0]["x_target"], label='target pos')
-  plt.title("actual vs target trajectory")
-  plt.ylim([-2.2,2.2])
-  plt.legend(loc="upper left")
-  if save_plot:
-    plt.savefig(f'out/{filename}_traj.png')
-    wandb.log({"traj plot": plt})
-  plt.show()
-
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--task", default="CartPole-v1")
   parser.add_argument("--algo", default="cma", choices=get_available_algos())
   parser.add_argument("--max_evals", type=int, default=1000)
   parser.add_argument("--n_samples", type=int, default=1)
-  parser.add_argument("--save_model", default=False)
+  parser.add_argument("--save", default=False)
   parser.add_argument("--render_mode", type=str, default="human", choices=["human", "rgb_array", "None"])
   parser.add_argument("--hidden_sizes", type=str, default="32")
   parser.add_argument("--seed", type=int, default=42)
   args = parser.parse_args()
 
   hidden_sizes = get_hidden_sizes(args.hidden_sizes)
-  best_model, hist = train(args.task, args.algo, hidden_sizes, args.max_evals, args.save_model, seed=args.seed)
-  if args.save_model:
+  best_model, hist = train(args.task, args.algo, hidden_sizes, args.max_evals, args.save, seed=args.seed)
+  if args.save:
     rewards, info = sample(args.task, best_model, args.n_samples, render_mode="rgb_array")
     wandb.log({"video": wandb.Video(f'out/rl-video-episode-0.mp4', fps=50, format="mp4")})
   else:
     rewards, info = sample(args.task, best_model, args.n_samples, args.render_mode)
   print(f"sample run rewards {rewards} avg {np.mean(rewards)}")
-
-  if args.task == "CartLatAccel":
-    filename = f"{args.task}_{args.algo}_nevs{args.max_evals}"
-    plot_traj(info, filename, save_plot=args.save_model)

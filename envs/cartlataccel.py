@@ -135,6 +135,17 @@ class CartLatAccelEnv(gym.Env):
                 np.array(pygame.surfarray.pixels3d(self.screen)), axes=(1, 0, 2)
             )
 
+    @staticmethod
+    def plot_traj(info, filename, save_plot=False):
+        plt.plot(info[0]["x"], label='actual pos')
+        plt.plot(info[0]["x_target"], label='target pos')
+        plt.title("actual vs target trajectory")
+        plt.ylim([-2.2,2.2])
+        plt.legend(loc="upper left")
+        if save_plot:
+            plt.savefig(f'out/{filename}_traj.png')
+        plt.show()
+
     def close(self):
         if self.screen is not None:
             import pygame

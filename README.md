@@ -2,13 +2,20 @@
 
 simple environment for training RL algos on custom envs
 
-usage: `python tinygym.py --algo ppo --task CartLatAccel --max_evals 1000 --save_model True`
+## Usage
 
-test: `python unit_test.py`
+To train, simply add algos to `algos/` and tasks to `envs/`, then run:
+`python tinygym.py --algo [algo] --task [task] --max_evals [default=1000] --save [True]`
 
-- [x] reinforce
-- [x] vpg
+To test algos on sample tasks: `python unit_test.py`
+
+## Implementations
+
+Includes some basic, minimal implements of RL algos.
+
+- [x] reinforce (~35 lines of code)
+- [x] vpg (~50 lines)
 - [x] cma
-- [x] ppo
+- [x] ppo (based on SB3)
 - [ ] dqn
 - [ ] sac
