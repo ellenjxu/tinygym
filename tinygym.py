@@ -40,7 +40,7 @@ class GymEnv:
     with self.env:
       for _ in range(max_steps):
         state_tensor = torch.FloatTensor(state).unsqueeze(0)
-        action = model.get_action(state_tensor, deterministic=deterministic)
+        action = model.get_action(state_tensor, deterministic=deterministic).detach().cpu().numpy()
         next_state, reward, terminated, truncated, info = self.env.step(action)
         states.append(state)
         actions.append(action)
