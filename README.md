@@ -7,8 +7,6 @@ simple environment for training RL algos on custom envs
 - [x] reinforce
 - [x] vpg
 - [x] cma
-- [ ] ppo
-
-TODO:
-
-- [ ] report: test that it passes tasks
+- [x] ppo
+- [ ] dqn
+- [ ] sac
