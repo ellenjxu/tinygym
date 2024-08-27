@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from torch.optim import Adam
 from tinygym import GymEnv
 from model import MLPCategorical, MLPGaussian
@@ -11,25 +12,25 @@ def get_discounted_(rewards, gamma=0.99):
     returns = [running_return] + returns
   return torch.tensor(returns)
 
-def evaluate_cost(model, obs, act, weights):
+def evaluate_cost(model, obs, act, rets):
   logp = model.get_logprob(obs, act)
-  return -(logp * weights).mean()
+  return -(logp * rets).mean()
 
-def train_single_epoch(model, env, epoch_steps=1000):
-  obs, acts, rews, weights, step_count, n_eps = [], [], [], [], 0, 0 # batch
+def train_single_epoch(model, env, n_steps=1000):
+  obs, acts, rews, rets, step_count, n_eps = [], [], [], [], 0, 0 # batch
 
   while True:
-    ep_obs, ep_acts, ep_rews, _ = env.rollout(model)
+    ep_obs, ep_acts, ep_rews, _ = env.rollout(model)  # over multiple rollouts
     obs.extend(ep_obs)
     acts.extend(ep_acts)
     rews.append(sum(ep_rews))
-    weights.extend(get_discounted_(ep_rews))
+    rets.extend(get_discounted_(ep_rews))
     step_count += len(ep_rews)
     n_eps += 1
-    if step_count > epoch_steps:
+    if step_count > n_steps:
       break
 
-  epoch_loss = evaluate_cost(model, torch.tensor(obs), torch.tensor(acts), torch.tensor(weights))
+  epoch_loss = evaluate_cost(model, torch.tensor(np.array(obs)), torch.tensor(np.array(acts)), torch.tensor(np.array(rets)))
   avg_reward = sum(rews) / n_eps
   return epoch_loss, avg_reward, n_eps
 

@@ -39,7 +39,8 @@ class GymEnv:
 
     with self.env:
       for _ in range(max_steps):
-        action = model.get_action(state, deterministic=deterministic)
+        state_tensor = torch.FloatTensor(state).unsqueeze(0)
+        action = model.get_action(state_tensor, deterministic=deterministic)
         next_state, reward, terminated, truncated, info = self.env.step(action)
         states.append(state)
         actions.append(action)
@@ -84,7 +85,7 @@ def sample(task, model, n_samples=10, render_mode=None, seed=None):
   env = GymEnv(task, render_mode=render_mode, seed=seed)
   rewards, infos = [], []
   for i in range(n_samples):
-    eps_states, eps_actions, eps_rewards, eps_info = env.rollout(best_model, deterministic=True, seed=seed)
+    eps_states, eps_actions, eps_rewards, eps_info = env.rollout(model, deterministic=True, seed=seed)
     rewards.append(sum(eps_rewards))
     infos.append(eps_info)
   return rewards, infos

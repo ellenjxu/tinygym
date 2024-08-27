@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from torch.optim import Adam
 from tinygym import GymEnv
 from model import MLPCategorical, MLPGaussian
@@ -13,8 +14,8 @@ def get_discounted_(rewards, gamma=0.99):
 
 def evaluate_cost(model, obs, act, rewards):
   logp = model.get_logprob(obs, act)
-  weights = get_discounted_(rewards)
-  return -(logp * weights).mean()
+  rets = get_discounted_(rewards) # calculate returns after each rollout
+  return -(logp * rets).mean() # pseudoloss
 
 def train(task, hidden_sizes=[32], max_evals=1000, seed=None):  # episodic, bs=1
   env = GymEnv(task, seed=seed)
@@ -25,7 +26,7 @@ def train(task, hidden_sizes=[32], max_evals=1000, seed=None):  # episodic, bs=1
   for i in range(max_evals):
     optimizer.zero_grad()
     ep_obs, ep_acts, ep_rew, _ = env.rollout(model)
-    loss = evaluate_cost(model, torch.tensor(ep_obs), torch.tensor(ep_acts), torch.tensor(ep_rew))
+    loss = evaluate_cost(model, torch.tensor(np.array(ep_obs)), torch.tensor(np.array(ep_acts)), torch.tensor(np.array(ep_rew)))
     loss.backward()
     optimizer.step()
     if i % 10 == 0:

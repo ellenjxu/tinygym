@@ -15,25 +15,27 @@ class MLPCategorical(nn.Module):
     super(MLPCategorical, self).__init__()
     self.mlp = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
 
-  def forward(self, x):
-    x = torch.FloatTensor(x).unsqueeze(0)
-    logits = self.mlp(x)
-    return logits
+  def forward(self, x: torch.Tensor):
+    assert x.ndim == 2 # need batch dim
+    return self.mlp(x)
 
-  def get_policy(self, obs):
+  def get_policy(self, obs: torch.Tensor):
     logits = self.forward(obs)
-    return Categorical(logits=logits)
+    probs = F.softmax(logits, dim=-1)
+    return probs
 
-  def get_action(self, obs, deterministic=False):
-    action = self.get_policy(obs).sample()
+  def get_action(self, obs: torch.Tensor, deterministic=False):
+    probs = self.get_policy(obs)
     if deterministic: # get most likely
-      logits = self.forward(obs)
-      probs = F.softmax(logits, dim=-1)
       action = torch.argmax(probs, dim=-1)
-    return action.detach().cpu().tolist()[0]
+    else:
+      action = torch.multinomial(probs, num_samples=1)
+    return action.detach().cpu().numpy().squeeze()
 
-  def get_logprob(self, obs, act):
-    logprob = self.get_policy(obs).log_prob(act)
+  def get_logprob(self, obs: torch.Tensor, act: torch.Tensor):
+    logits = self.forward(obs)
+    log_probs = F.log_softmax(logits, dim=-1)
+    logprob = log_probs.gather(1, act.unsqueeze(-1)).squeeze(-1)
     return logprob
 
 class MLPGaussian(nn.Module):
@@ -41,20 +43,21 @@ class MLPGaussian(nn.Module):
     super(MLPGaussian, self).__init__()
     self.mlp = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
     self.log_std = torch.nn.Parameter(torch.full((act_dim,), log_std, dtype=torch.float32))
-    self.register_buffer('std', self.log_std.exp())
+    # self.register_buffer('std', self.log_std.exp())
 
   def forward(self, x: torch.Tensor):
-    x = x.unsqueeze(0)
     return self.mlp(x)
 
   def get_action(self, obs: torch.Tensor, deterministic=False):
     mean = self.forward(obs)
-    action = mean[0] if deterministic else torch.normal(mean, self.std)[0]
+    std = self.log_std.exp()
+    action = mean[0] if deterministic else torch.normal(mean, std)[0]
     return action.detach().cpu().numpy()
 
   def get_logprob(self, obs: torch.Tensor, act: torch.Tensor):
     mean = self.forward(obs)
-    logprob = -0.5 * (((act - mean)**2) / self.std**2 + 2 * self.log_std + torch.log(torch.tensor(2*torch.pi)))
+    std = self.log_std.exp()
+    logprob = -0.5 * (((act - mean)**2) / std**2 + 2 * self.log_std + torch.log(torch.tensor(2*torch.pi)))
     return logprob.sum(dim=-1)
 
 class MLPCritic(nn.Module):
