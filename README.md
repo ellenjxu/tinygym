@@ -2,7 +2,9 @@
 
 simple environment for training RL algos on custom envs
 
-`python tinygym.py --algo ppo --task CartLatAccel --max_evals 1000 --save_model True`
+usage: `python tinygym.py --algo ppo --task CartLatAccel --max_evals 1000 --save_model True`
+
+test: `python unit_test.py`
 
 - [x] reinforce
 - [x] vpg
