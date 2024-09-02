@@ -11,6 +11,7 @@ To train and save model:
 3. run: `python tinygym.py --algo [algo] --task [task] --max_evals [default=1000] --save [True]`
 
 To test algos on sample tasks: `python unit_test.py`
+ex. `python tinygym.py --algo CMAES --task CartPole-v1 --max_evals 10000`
 
 ## Implementations
 
