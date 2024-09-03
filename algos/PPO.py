@@ -65,8 +65,9 @@ class PPO(RLAlgorithm):
         values = model.critic(state_tensor).cpu().numpy().squeeze()
         next_values = model.critic(next_state_tensor).cpu().numpy().squeeze()
         logprobs_tensor, _ = model.actor.get_logprob(state_tensor, action_tensor)
+        returns, advantages = self.compute_gae(np.array(rewards), values, np.array(dones), next_values)
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
-      returns, advantages = self.compute_gae(np.array(rewards), values, np.array(dones), next_values)
       gae_time = time.perf_counter()-start
 
       # add to buffer
@@ -89,8 +90,7 @@ class PPO(RLAlgorithm):
         start = time.perf_counter()
         for _ in range(self.epochs):
           for i, batch in enumerate(self.replay_buffer):
-            advantages = (batch['advantages']-torch.mean(batch['advantages']))/(torch.std(batch['advantages'])+1e-8)
-            costs = self.evaluate_cost(model, batch['states'], batch['actions'], batch['returns'], advantages, batch['logprobs'])
+            costs = self.evaluate_cost(model, batch['states'], batch['actions'], batch['returns'], batch['advantages'], batch['logprobs'])
             loss = costs["actor"] + 0.5 * costs["critic"] + costs["entropy"]
             optimizer.zero_grad()
             loss.backward()
