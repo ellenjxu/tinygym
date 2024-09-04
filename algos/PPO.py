@@ -42,7 +42,7 @@ class PPO(RLAlgorithm):
     surr1 = ratio * advantages
     surr2 = torch.clamp(ratio, 1-self.clip_range, 1+self.clip_range) * advantages
     actor_loss = -torch.min(surr1, surr2).mean()
-    critic_loss = nn.MSELoss()(model.critic(states).squeeze(), returns)
+    critic_loss = nn.MSELoss()(model.critic(states).squeeze(), returns.squeeze())
     entropy_loss = -self.ent_coeff * entropy.mean()
     return {"actor": actor_loss, "critic": critic_loss, "entropy": entropy_loss}
 

@@ -2,7 +2,7 @@ from pathlib import Path
 from tinygym import train, sample, get_available_algos
 
 def main():
-  for task in ['CartPole-v1', 'LunarLander-v2', 'Pendulum-v1', 'CartPoleCont-v0', 'CartLatAccel-v0']:
+  for task in ['CartPole-v1', 'LunarLander-v2', 'Pendulum-v1', 'CartLatAccel-v0']:
     for algo in get_available_algos():
       print(f'testing {algo} on {task}')
       best_model, hist = train(task, algo, max_evals=20)

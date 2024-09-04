@@ -16,7 +16,7 @@ class MLPCategorical(nn.Module):
     self.mlp = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
 
   def forward(self, x: torch.Tensor) -> torch.Tensor:
-    assert x.ndim == 2 # need batch dim
+    # assert x.ndim == 2 # need batch dim
     return self.mlp(x)
 
   def get_policy(self, obs: torch.Tensor) -> torch.Tensor:
@@ -46,7 +46,7 @@ class MLPGaussian(nn.Module):
     # self.register_buffer('std', self.log_std.exp())
 
   def forward(self, x: torch.Tensor) -> torch.Tensor:
-    assert x.ndim == 2
+    # assert x.ndim == 2
     return self.mlp(x)
 
   def get_action(self, obs: torch.Tensor, deterministic: bool = False) -> torch.Tensor:
@@ -71,7 +71,7 @@ class MLPBeta(nn.Module):
     self.act_dim = act_dim
 
   def forward(self, x: torch.Tensor):
-    assert x.ndim == 2
+    # assert x.ndim == 2
     return self.mlp(x)
 
   def get_action(self, obs: torch.Tensor, deterministic=False):
@@ -83,7 +83,7 @@ class MLPBeta(nn.Module):
     return action.detach().cpu().numpy().squeeze(-1)
 
   def get_logprob(self, obs: torch.Tensor, act: torch.Tensor):
-    assert act.ndim == 2
+    # assert act.ndim == 2
     alpha_beta = self.forward(obs)
     alpha, beta = torch.split(alpha_beta, self.act_dim, dim=-1)
     alpha = F.softplus(alpha) + 1
