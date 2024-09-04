@@ -9,7 +9,7 @@ a tiny RL playground for training algos on custom tasks 🤖
 3. train and save model:
    `python tinygym.py --algo [algo] --task [task] --max_evals [default=1000] --save [True]`
 
-   ex. `python tinygym.py --algo CMAES --task CartPole-v1 --max_evals 10000`
+ex. `python tinygym.py --algo CMAES --task CartPole-v1 --max_evals 10000`
 
 To check algos on sample tasks: `python unit_test.py`
 

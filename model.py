@@ -53,7 +53,7 @@ class MLPGaussian(nn.Module):
     mean = self.forward(obs)
     std = self.log_std.exp()
     action = mean if deterministic else torch.normal(mean, std)
-    return action.detach().cpu().numpy()
+    return action.detach().cpu().numpy().squeeze(-1)
 
   def get_logprob(self, obs: torch.Tensor, act: torch.Tensor) -> torch.Tensor:
     mean = self.forward(obs)
@@ -67,7 +67,7 @@ class MLPBeta(nn.Module):
   '''Beta distribution for bounded continuous control, output between 0 and 1'''
   def __init__(self, obs_dim, hidden_sizes, act_dim, activation=nn.Tanh, bias=True):
     super(MLPBeta, self).__init__()
-    self.mlp = mlp([obs_dim] + list(hidden_sizes) + [act_dim * 2], activation=activation, bias=bias)
+    self.mlp = mlp([obs_dim] + list(hidden_sizes) + [act_dim*2], activation)
     self.act_dim = act_dim
 
   def forward(self, x: torch.Tensor):
@@ -80,7 +80,7 @@ class MLPBeta(nn.Module):
     alpha = F.softplus(alpha) + 1
     beta = F.softplus(beta) + 1
     action = alpha / (alpha + beta) if deterministic else torch.distributions.Beta(alpha, beta).sample()
-    return action.detach().cpu().numpy()
+    return action.detach().cpu().numpy().squeeze(-1)
 
   def get_logprob(self, obs: torch.Tensor, act: torch.Tensor):
     assert act.ndim == 2
@@ -104,7 +104,7 @@ class MLPCritic(nn.Module):
 class ActorCritic(nn.Module):
   def __init__(self, obs_dim: int, hidden_sizes: dict[str, list[int]], act_dim: int, discrete: bool = False) -> None:
     super(ActorCritic, self).__init__()
-    model_class = MLPCategorical if discrete else MLPGaussian
+    model_class = MLPCategorical if discrete else MLPGaussian # for bounded action spaces: MLPBeta
     self.actor = model_class(obs_dim, hidden_sizes["pi"], act_dim)
     self.critic = MLPCritic(obs_dim, hidden_sizes["vf"])
 
