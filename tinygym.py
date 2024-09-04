@@ -92,7 +92,7 @@ def sample(task, model, n_samples=10, render_mode=None, seed=None):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--task", default="CartPole-v1")
-  parser.add_argument("--algo", default="cma", choices=get_available_algos())
+  parser.add_argument("--algo", default="PPO", choices=get_available_algos())
   parser.add_argument("--max_evals", type=int, default=1000)
   parser.add_argument("--n_samples", type=int, default=1)
   parser.add_argument("--save", default=False)

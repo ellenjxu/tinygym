@@ -10,7 +10,7 @@ from tinygym import GymEnv
 from model import ActorCritic
 
 class PPO(RLAlgorithm):
-  def __init__(self, lr=1e-3, clip_range=0.2, epochs=1, n_steps=1000, ent_coeff=0.01, bs=32, device='cpu', debug=False):
+  def __init__(self, lr=1e-1, clip_range=0.2, epochs=1, n_steps=5000, ent_coeff=0.01, bs=32, device='cpu', debug=False):
     self.lr = lr
     self.clip_range = clip_range
     self.epochs = epochs
@@ -108,7 +108,7 @@ class PPO(RLAlgorithm):
         self.hist.append((self.eps, avg_reward))
         print(f"eps {self.eps:.2f}, reward {avg_reward:.3f}, t {time.time()-self.start:.2f}")
 
-      self.eps += 1 # cartlataccel env bs
+      self.eps += 1 # env bs
       if self.eps > max_evals:
         break
     return model.actor.cpu(), self.hist
