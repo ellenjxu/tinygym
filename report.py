@@ -1,3 +1,4 @@
+# generates report for algo trained on a specific task
 import base64
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
