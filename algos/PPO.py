@@ -10,7 +10,7 @@ from tinygym import GymEnv
 from model import ActorCritic
 
 class PPO(RLAlgorithm):
-  def __init__(self, lr=1e-1, clip_range=0.2, epochs=1, n_steps=5000, ent_coeff=0.01, bs=32, device='cpu', debug=False):
+  def __init__(self, lr=3e-4, clip_range=0.2, epochs=10, n_steps=2048, ent_coeff=0.001, bs=64, device='cpu', debug=False):
     self.lr = lr
     self.clip_range = clip_range
     self.epochs = epochs
@@ -25,7 +25,7 @@ class PPO(RLAlgorithm):
     self.eps = 0
 
   @staticmethod
-  def compute_gae(rewards, values, done, next_value, gamma=0.99, lam=0.95):
+  def compute_gae(rewards, values, done, next_value, gamma=0.99, lam=0.99):
     returns, advantages = np.zeros_like(rewards), np.zeros_like(rewards)
     gae = 0
     for t in reversed(range(len(rewards))):
