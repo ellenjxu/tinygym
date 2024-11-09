@@ -16,7 +16,6 @@ class MLPCategorical(nn.Module):
     self.mlp = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
 
   def forward(self, x: torch.Tensor) -> torch.Tensor:
-    # assert x.ndim == 2 # need batch dim
     return self.mlp(x)
 
   def get_policy(self, obs: torch.Tensor) -> torch.Tensor:
@@ -43,10 +42,8 @@ class MLPGaussian(nn.Module):
     super(MLPGaussian, self).__init__()
     self.mlp = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
     self.log_std = torch.nn.Parameter(torch.full((act_dim,), log_std, dtype=torch.float32))
-    # self.register_buffer('std', self.log_std.exp())
 
   def forward(self, x: torch.Tensor) -> torch.Tensor:
-    # assert x.ndim == 2
     return self.mlp(x)
 
   def get_action(self, obs: torch.Tensor, deterministic: bool = False) -> torch.Tensor:
@@ -71,7 +68,6 @@ class MLPBeta(nn.Module):
     self.act_dim = act_dim
 
   def forward(self, x: torch.Tensor):
-    # assert x.ndim == 2
     return self.mlp(x)
 
   def get_action(self, obs: torch.Tensor, deterministic=False):
@@ -83,7 +79,6 @@ class MLPBeta(nn.Module):
     return action.detach().cpu().numpy().squeeze(-1)
 
   def get_logprob(self, obs: torch.Tensor, act: torch.Tensor):
-    # assert act.ndim == 2
     alpha_beta = self.forward(obs)
     alpha, beta = torch.split(alpha_beta, self.act_dim, dim=-1)
     alpha = F.softplus(alpha) + 1
@@ -102,11 +97,26 @@ class MLPCritic(nn.Module):
     return self.mlp(x)
 
 class ActorCritic(nn.Module):
-  def __init__(self, obs_dim: int, hidden_sizes: dict[str, list[int]], act_dim: int, discrete: bool = False) -> None:
+  def __init__(self, obs_dim: int, hidden_sizes: dict[str, list[int]], act_dim: int, discrete: bool = False, shared_layers: bool = True, is_bounded: bool = False) -> None:
     super(ActorCritic, self).__init__()
-    model_class = MLPCategorical if discrete else MLPGaussian # for bounded action spaces: MLPBeta
-    self.actor = model_class(obs_dim, hidden_sizes["pi"], act_dim)
-    self.critic = MLPCritic(obs_dim, hidden_sizes["vf"])
+    model_class = MLPCategorical if discrete else (MLPGaussian if not is_bounded else MLPBeta) # for bounded action spaces use MLPBeta
+    
+    if shared_layers and len(hidden_sizes["pi"]) > 1:
+      self.shared = mlp([obs_dim] + hidden_sizes["pi"][:-1], nn.Tanh)
+      # override
+      self.actor = model_class(obs_dim, [], act_dim)
+      self.critic = MLPCritic(obs_dim, [])
+      self.actor.mlp = nn.Sequential(
+        self.shared,
+        mlp([hidden_sizes["pi"][-2], hidden_sizes["pi"][-1], act_dim], nn.Tanh)
+      )
+      self.critic.mlp = nn.Sequential(
+        self.shared,
+        mlp([hidden_sizes["vf"][-2], hidden_sizes["vf"][-1], 1], nn.Tanh)
+      )
+    else:
+      self.actor = model_class(obs_dim, hidden_sizes["pi"], act_dim)
+      self.critic = MLPCritic(obs_dim, hidden_sizes["vf"])
 
   def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
     actor_out = self.actor(x)

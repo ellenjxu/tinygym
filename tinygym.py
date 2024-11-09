@@ -97,7 +97,7 @@ if __name__ == "__main__":
   parser.add_argument("--n_samples", type=int, default=1)
   parser.add_argument("--save", default=False)
   parser.add_argument("--render_mode", type=str, default="human", choices=["human", "rgb_array", "None"])
-  parser.add_argument("--hidden_sizes", type=str, default="32")
+  parser.add_argument("--hidden_sizes", type=str, default="32,32")
   parser.add_argument("--seed", type=int, default=42)
   args = parser.parse_args()
 

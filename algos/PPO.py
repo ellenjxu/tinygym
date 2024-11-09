@@ -10,7 +10,7 @@ from tinygym import GymEnv
 from model import ActorCritic
 
 class PPO(RLAlgorithm):
-  def __init__(self, lr=3e-4, clip_range=0.2, epochs=10, n_steps=2048, ent_coeff=0.001, bs=64, device='cpu', debug=False):
+  def __init__(self, lr=3e-4, clip_range=0.2, epochs=10, n_steps=2048, ent_coeff=0.001, bs=64, device='cpu', debug=False, shared_layers=True):
     self.lr = lr
     self.clip_range = clip_range
     self.epochs = epochs
@@ -23,6 +23,7 @@ class PPO(RLAlgorithm):
     self.device = device
     self.debug = debug
     self.eps = 0
+    self.shared_layers = shared_layers
 
   @staticmethod
   def compute_gae(rewards, values, done, next_value, gamma=0.99, lam=0.99):
@@ -47,7 +48,7 @@ class PPO(RLAlgorithm):
     return {"actor": actor_loss, "critic": critic_loss, "entropy": entropy_loss}
 
   def train(self, env, hidden_sizes, max_evals=10000):
-    model = ActorCritic(env.n_obs, {"pi": hidden_sizes, "vf": [32]}, env.n_act, env.is_act_discrete).to(self.device)
+    model = ActorCritic(env.n_obs, {"pi": hidden_sizes, "vf": hidden_sizes}, env.n_act, env.is_act_discrete, shared_layers=self.shared_layers).to(self.device)
     optimizer = optim.Adam(model.parameters(), lr=self.lr)
 
     while True:
