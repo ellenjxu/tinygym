@@ -20,6 +20,8 @@ class GymEnv:
     self.is_act_discrete = True if isinstance(self.env.action_space, gym.spaces.Discrete) else False
     self.n_obs = self.env.observation_space.shape[-1]
     self.n_act = self.env.action_space.n if self.is_act_discrete else self.env.action_space.shape[-1]
+    self.is_act_bounded = True if isinstance(self.env.action_space, gym.spaces.Box) else False
+    self.act_bound = (self.env.action_space.low[0], self.env.action_space.high[0]) if self.is_act_bounded else None
     self.env.reset()
     if seed is not None:
       self.seed(seed)

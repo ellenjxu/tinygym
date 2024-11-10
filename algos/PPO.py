@@ -48,7 +48,14 @@ class PPO(RLAlgorithm):
     return {"actor": actor_loss, "critic": critic_loss, "entropy": entropy_loss}
 
   def train(self, env, hidden_sizes, max_evals=10000):
-    model = ActorCritic(env.n_obs, {"pi": hidden_sizes, "vf": hidden_sizes}, env.n_act, env.is_act_discrete, shared_layers=self.shared_layers).to(self.device)
+    model = ActorCritic(
+      env.n_obs,
+      {"pi": hidden_sizes, "vf": hidden_sizes},
+      env.n_act,
+      env.is_act_discrete,
+      shared_layers=self.shared_layers,
+      act_bound=env.act_bound if env.is_act_bounded else None
+    ).to(self.device)
     optimizer = optim.Adam(model.parameters(), lr=self.lr)
 
     while True:
