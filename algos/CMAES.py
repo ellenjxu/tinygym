@@ -6,7 +6,7 @@ from functools import partial
 from multiprocessing import Pool
 from tinygym import GymEnv
 from algos import RLAlgorithm
-from model import MLPCategorical, MLPGaussian, MLPBeta
+from model import MLPCategorical, MLPGaussian
 
 class CMAES(RLAlgorithm):
   def __init__(self, popsize=25, sigma=1e-1, sample_size=1):

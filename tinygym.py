@@ -8,8 +8,12 @@ import importlib
 import numpy as np
 import matplotlib.pyplot as plt
 import gymnasium as gym
+import gym_cartlataccel
 from gymnasium.wrappers import RecordVideo
 from pathlib import Path
+
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
 
 class GymEnv:
   def __init__(self, task, render_mode=None, seed=None):
