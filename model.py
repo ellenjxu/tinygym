@@ -108,6 +108,7 @@ class ActorCritic(nn.Module):
   def __init__(self, obs_dim: int, hidden_sizes: dict[str, list[int]], act_dim: int, discrete: bool = False, shared_layers: bool = True, act_bound: tuple[float, float] = None) -> None:
     super(ActorCritic, self).__init__()
     model_class = MLPCategorical if discrete else (MLPGaussian if not act_bound else MLPBeta)
+    print('using', model_class)
     if act_bound: # if bounded then use MLPBeta
       self.actor = model_class(obs_dim, hidden_sizes["pi"], act_dim, act_bound=act_bound)
       act_dim *= 2 # MLPBeta outputs two parameters alpha, beta

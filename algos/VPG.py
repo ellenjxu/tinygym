@@ -55,6 +55,7 @@ class VPG(RLAlgorithm):
 
       nevs += num_eps
       hist.append((nevs, avg_reward))
+      print(nevs, epoch_loss, avg_reward)
       print(f"nevs {nevs} loss {epoch_loss.item():.3f} reward {avg_reward:.3f}")
       if nevs > max_evals:
         break

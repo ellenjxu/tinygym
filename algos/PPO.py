@@ -24,6 +24,7 @@ class PPO(RLAlgorithm):
     self.debug = debug
     self.eps = 0
     self.shared_layers = shared_layers
+    print('using device', device)
 
   @staticmethod
   def compute_gae(rewards, values, done, next_value, gamma=0.99, lam=0.99):
