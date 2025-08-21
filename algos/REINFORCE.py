@@ -35,7 +35,7 @@ class REINFORCE(RLAlgorithm):
       loss.backward()
       optimizer.step()
       if i % 10 == 0:
-        avg_reward = sum(ep_rew) / 10
-        hist.append((i, avg_reward))
-        print(f"nevs {i} reward {avg_reward}")
+        avg_reward = np.sum(ep_rew)
+        hist.append((i, ep_rew))
+        print(f"eps {i:.2f}, reward {avg_reward:.3f}")
     return model, hist
