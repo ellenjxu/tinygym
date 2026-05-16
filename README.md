@@ -17,7 +17,7 @@ Test on sample tasks: `python unit_test.py`
 - [x] vpg (~50 lines)
 - [x] cma
 - [x] ppo (based on SB3)
-- [ ] dqn
+- [x] dqn (based on Atari paper)
 - [ ] sac
 
 Converges to basic controls tasks in <1K episodes (CMA takes longer, ~10K).

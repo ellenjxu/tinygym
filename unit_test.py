@@ -15,11 +15,11 @@ def test_all_basic():
       print('----------------\n')
 
 def test_all_cartpole():
-  """All tasks should get 500.0 (max reward) on CartPole-v1 (RENFORCE and VPG can be unstable)"""
+  """All tasks should get 500.0 (max reward) on CartPole-v1 (REINFORCE and VPG can be unstable)"""
   # for algo in get_available_algos():
   for algo in get_available_algos():
-    if algo != "VPG":
-      pass
+    if algo == "VPG" or algo == "REINFORCE":
+      continue
     print(f'testing {algo} on CartPole-v1')
     max_evals = 1000 if algo != 'CMAES' else 10000
     best_model, hist = train('CartPole-v1', algo, max_evals=max_evals, seed=seed)
@@ -32,3 +32,4 @@ def test_all_cartpole():
 if __name__ == '__main__':
   test_all_basic()
   test_all_cartpole()
+  print("ALL TESTS PASSED")

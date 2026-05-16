@@ -1,0 +1,9 @@
+torch==2.12.0
+numpy==2.4.5
+matplotlib==3.10.9
+gymnasium[box2d]==0.29.1
+wandb==0.27.0
+tensordict==0.12.3
+torchrl==0.12.0
+cmaes==0.13.0
+gym_cartlataccel @ git+https://github.com/ellenjxu/gym-cartlataccel.git

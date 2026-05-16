@@ -10,13 +10,17 @@ def mlp(hidden_sizes: list[int], activation: nn.Module = nn.Tanh, output_activat
     layers += [nn.Linear(hidden_sizes[j], hidden_sizes[j+1]), act()]
   return nn.Sequential(*layers)
 
-class MLPCategorical(nn.Module):
+class MLPDiscrete(nn.Module):
   def __init__(self, obs_dim: int, hidden_sizes: list[int], act_dim: int, activation: nn.Module = nn.Tanh) -> None:
-    super(MLPCategorical, self).__init__()
+    super(MLPDiscrete, self).__init__()
     self.mlp = mlp([obs_dim] + list(hidden_sizes) + [act_dim], activation)
 
   def forward(self, x: torch.Tensor) -> torch.Tensor:
     return self.mlp(x)
+
+class MLPCategorical(MLPDiscrete):
+  def __init__(self, obs_dim: int, hidden_sizes: list[int], act_dim: int, activation: nn.Module = nn.Tanh) -> None:
+    super(MLPCategorical, self).__init__(obs_dim, hidden_sizes, act_dim, activation)
 
   def get_policy(self, obs: torch.Tensor) -> torch.Tensor:
     logits = self.forward(obs)
@@ -36,6 +40,33 @@ class MLPCategorical(nn.Module):
     entropy = -(logprob*prob)
     assert logprob.shape == act.shape
     return logprob, entropy.sum(dim=-1)
+
+class MLPQNetwork(MLPDiscrete):
+  '''Q network for discrete action spaces'''
+  def __init__(self, obs_dim: int, hidden_sizes: list[int], n_actions: int, activation: nn.Module = nn.Tanh, action_values=None) -> None:
+    super(MLPQNetwork, self).__init__(obs_dim, hidden_sizes, n_actions, activation)
+    self.n_actions = n_actions  # number of discrete action bins
+    self.action_values = None if action_values is None else np.array(action_values, dtype=np.float32)
+
+  def get_q_values(self, obs: torch.Tensor) -> torch.Tensor:
+    return self.forward(obs)
+
+  def action_idx_to_env_action(self, action_idx):
+    action_idx = int(np.asarray(action_idx).item())
+    if self.action_values is None:
+      return action_idx
+    return np.array([self.action_values[action_idx]], dtype=np.float32)
+
+  def get_action_idx(self, obs: torch.Tensor, deterministic: bool = False, eps: float = 0.) -> int:
+    if not deterministic and np.random.rand() < eps:
+      return np.random.randint(self.n_actions)
+    with torch.no_grad():
+      q_values = self.get_q_values(obs)
+    return torch.argmax(q_values, dim=-1).detach().cpu().numpy().squeeze()
+
+  def get_action(self, obs: torch.Tensor, deterministic: bool = False):
+    action_idx = self.get_action_idx(obs, deterministic=deterministic)
+    return self.action_idx_to_env_action(action_idx)
 
 class MLPGaussian(nn.Module):
   def __init__(self, obs_dim: int, hidden_sizes: list[int], act_dim: int, activation: nn.Module = nn.Tanh, log_std: float = 0.) -> None:
